@@ -12,3 +12,4 @@
 /Users/alex/cs_practice/dotnet/gaze_into_abyss/obj/Debug/net9.0/gaze_into_abyss.pdb
 /Users/alex/cs_practice/dotnet/gaze_into_abyss/obj/Debug/net9.0/gaze_into_abyss.genruntimeconfig.cache
 /Users/alex/cs_practice/dotnet/gaze_into_abyss/obj/Debug/net9.0/ref/gaze_into_abyss.dll
+/Users/alex/cs_practice/dotnet/gaze_into_abyss/obj/Debug/net9.0/gaze_into_abyss.sourcelink.json

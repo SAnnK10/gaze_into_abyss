@@ -4,17 +4,35 @@ using System.Data;
 using System.IO;
 using System.Collections.Generic;
 
+
 internal class Program
+{
+    static void Main()
+    {
+        Game.Start();
+    }
+}
+
+class Menu()
+{
+    
+}
+
+class Game 
 {   
+    enum GameState {Menu, Playing, FishingMiniGame}
+    static GameState currentState = GameState.Menu;
     const int SCREEN_WIDTH = 800;
     const int SCREEN_HEIGHT = 600;
     const int TILE_SIZE = 10;
     const int MAP_WIDTH = SCREEN_WIDTH * 5 / TILE_SIZE;
     const int MAP_HEIGHT = SCREEN_HEIGHT * 5 / TILE_SIZE;
     static float camX, camY = 0f;
+    static float pierX, pierY;
+    static bool pierInitialized = false;
 
-    static void Main()
-    {           
+    public static void Start()
+    {    
         IntPtr window = SDL.SDL_CreateWindow(
             "GAZE INTO ABYSS",
             SDL.SDL_WINDOWPOS_CENTERED,
@@ -39,6 +57,17 @@ internal class Program
         if (SDL.SDL_Init(SDL.SDL_INIT_VIDEO) != 0)
         {
             return;
+        }
+
+        if (SDL_ttf.TTF_Init() != -1)
+        {
+            Console.WriteLine("Error: SDL_ttf could not initialize.");
+        }  
+        IntPtr font = SDL_ttf.TTF_OpenFont("font.ttf", 16);
+
+        if (font == IntPtr.Zero)
+        {
+            Console.WriteLine("Error: font could not be loaded.");
         }
 
         if (window == IntPtr.Zero)
@@ -84,8 +113,14 @@ internal class Program
 
         IntPtr boatTexture = GenerateBoat(renderer);
 
-        Player player = new Player(map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, 0.5f);
+        Player player = new Player(map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, 0.1f);
         
+        if (!pierInitialized)
+        {
+            pierX = player.X - 20;
+            pierY = player.Y - 20;
+            pierInitialized = true;
+        }
 
         while (running)
         {
@@ -93,180 +128,268 @@ internal class Program
             {
                 if (e.type == SDL.SDL_EventType.SDL_QUIT) running = false;
 
-                if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
+                if (currentState == GameState.Menu)
                 {
-                    int pX = (int)(player.X / TILE_SIZE);
-                    int pY = (int)(player.Y / TILE_SIZE);
-
-                    if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_E)
+                    if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
                     {
-                        if (!player.IsFishing && fishMap[pX, pY] > 0.7f)
+                        if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_RETURN)
                         {
-                            player.IsFishing = true;
-                            player.FishIsBiting = false;
-                            player.velocityX = 0f;
-                            player.velocityY = 0f;
-                            player.BiteTimestamp = SDL.SDL_GetTicks() + (uint)new Random().Next(2000, 4000);
-                            Console.WriteLine("Удочка заброшена...");
-                        }
-                        else if (player.FishIsBiting && !fishingGame.IsActive)
-                        {
-                            currentFish = Fish.GenerateFishAt(
-                                map[pX, pY], 
-                                fishMap[pX, pY]
-                            );
-                            fishingGame.Start(currentFish);
+                            currentState = GameState.Playing;
                         }
                     }
-                    if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_SPACE && fishingGame.IsActive) fishingGame.PlayerClick(); 
+                }
+                else if (currentState == GameState.Playing)
+                {
+                    if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
+                    {
+                        int pX = (int)(player.X / TILE_SIZE);
+                        int pY = (int)(player.Y / TILE_SIZE);
+
+                        if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_F)
+                        {
+                            float dx = player.X - pierX;
+                            float dy = player.Y - pierY;
+                            float distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                            if (distance < 40f && player.Inventory.Count > 0)
+                            {
+                                int totalEarned = 0;
+                                foreach (var fish in player.Inventory) totalEarned += fish.Price;
+
+                                player.Money += totalEarned;
+                                player.Inventory.Clear();
+                                Console.WriteLine($"Вы продали рыбу за {totalEarned} монет! Ваш баланс: {player.Money} монет.");
+                            }         
+                        }
+
+                        if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_E)
+                        {
+                            if (!player.IsFishing && fishMap[pX, pY] > 0.7f)
+                            {
+                                player.IsFishing = true;
+                                player.FishIsBiting = false;
+                                player.velocityX = 0f;
+                                player.velocityY = 0f;
+                                player.BiteTimestamp = SDL.SDL_GetTicks() + (uint)new Random().Next(2000, 4000);
+                                Console.WriteLine("Удочка заброшена...");
+                            }
+                            else if (player.FishIsBiting && !fishingGame.IsActive)
+                            {
+                                currentFish = Fish.GenerateFishAt(
+                                    map[pX, pY], 
+                                    fishMap[pX, pY]
+                                );
+                                fishingGame.Start(currentFish);
+                            }
+                        }
+                        if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_SPACE && fishingGame.IsActive) fishingGame.PlayerClick(); 
+                    }
                 }
             }   
 
             uint ticks = SDL.SDL_GetTicks();
 
-            Player.Move(player, map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE);
-
-            if (player.IsFishing && !player.FishIsBiting)
-            {
-                if (ticks >= player.BiteTimestamp)
-                {
-                    player.FishIsBiting = true;
-                    Console.WriteLine("Рыба клюнула! Нажмите пробел, чтобы поймать её!");
-                }
-            }
-
-            if (fishingGame.IsActive)
-            {
-                fishingGame.Update();
-
-                if (fishingGame.CheckWin())
-                {
-                    if (player.AddToInventory(currentFish))
-                    {
-                        Console.WriteLine($"Вы добавили {currentFish.Name} в инвентарь.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Инвентарь полон! Рыба уплыла...");
-                    }
-                    fishingGame.IsActive = false;
-                    player.IsFishing = false;
-                    player.FishIsBiting = false;
-
-                }
-                else if (fishingGame.CheckLoss())
-                {
-                    Console.WriteLine("Сорвалась...");
-                    fishingGame.IsActive = false;
-                    player.IsFishing = false;
-                    player.FishIsBiting = false;
-                }
-            }
-
-
-            float wave = (float)Math.Sin(ticks * 0.0001f);
-            byte colorMod = (byte)(215 + (wave * 40));
-            SDL.SDL_SetTextureColorMod(worldTexture, colorMod, colorMod, 255);
-
-
-            camX = player.X - (SCREEN_WIDTH / 2);
-            camY = player.Y - (SCREEN_HEIGHT / 2);
-
-            camX = Math.Clamp(camX, 0, (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
-            camY = Math.Clamp(camY, 0, (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
-
+            SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL.SDL_RenderClear(renderer);
 
-            SDL.SDL_Rect srcRect = new SDL.SDL_Rect
+            if (currentState == GameState.Menu)
             {
-                x = (int)camX,
-                y = (int)camY,
-                w = SCREEN_WIDTH,
-                h = SCREEN_HEIGHT
-            };
-            SDL.SDL_Rect destRect = new SDL.SDL_Rect
+                RenderMenu(renderer, font);
+            }
+            else
             {
-                x = 0,
-                y = 0,
-                w = SCREEN_WIDTH,
-                h = SCREEN_HEIGHT
-            };
-            SDL.SDL_RenderCopy(renderer, worldTexture, ref srcRect, ref destRect);
-            
-            SDL.SDL_RenderCopy(renderer, fishTexture, ref srcRect, ref destRect);
+                Player.Move(player, map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE);
 
-            SDL.SDL_SetRenderTarget(renderer, fogTexture);
-            SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_NONE);
-            SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-            SDL.SDL_Rect revealRect = new SDL.SDL_Rect
-            {
-                x = (int)(player.X - 200),
-                y = (int)(player.Y - 200),
-                w = 400,
-                h = 400
-            };
-            SDL.SDL_RenderFillRect(renderer, ref revealRect);
-            SDL.SDL_SetRenderTarget(renderer, IntPtr.Zero);
-            SDL.SDL_RenderCopy(renderer, fogTexture, ref srcRect, ref destRect);
+                if (player.IsFishing && !player.FishIsBiting)
+                {
+                    if (ticks >= player.BiteTimestamp)
+                    {
+                        player.FishIsBiting = true;
+                        Console.WriteLine("Рыба клюнула! Нажмите пробел, чтобы поймать её!");
+                    }
+                }
 
-            SDL.SDL_Rect playerRect = new SDL.SDL_Rect
-            {
-                x = (int)(player.X - camX),
-                y = (int)(player.Y - camY),
-                w = 16,
-                h = 16
-            };
+                if (fishingGame.IsActive)
+                {
+                    fishingGame.Update();
 
-            SDL.SDL_RenderCopyEx(
-                renderer, 
-                boatTexture, 
-                IntPtr.Zero, 
-                ref playerRect, 
-                player.Angle, 
-                IntPtr.Zero, 
-                SDL.SDL_RendererFlip.SDL_FLIP_NONE
-            );
+                    if (fishingGame.CheckWin())
+                    {
+                        int pX = (int)(player.X / TILE_SIZE);
+                        int pY = (int)(player.Y / TILE_SIZE);
 
-            if (player.FishIsBiting && !fishingGame.IsActive)
-            {
-                SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-                SDL.SDL_Rect alertRect = new SDL.SDL_Rect {
-                    x = (int)(player.X - camX + 4),
-                    y = (int)(player.Y - camY - 25), 
-                    w = 6, h = 12
+                        fishMap[pX, pY] = 0f;
+                        if (player.AddToInventory(currentFish))
+                        {
+                            Console.WriteLine($"Вы добавили {currentFish.Name} с весом {currentFish.Weight} в инвентарь.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Инвентарь полон! Рыба уплыла...");
+                        }
+                        fishingGame.IsActive = false;
+                        player.IsFishing = false;
+                        player.FishIsBiting = false;
+
+                    }
+                    else if (fishingGame.CheckLoss())
+                    {
+                        Console.WriteLine("Сорвалась...");
+                        fishingGame.IsActive = false;
+                        player.IsFishing = false;
+                        player.FishIsBiting = false;
+                    }
+                }
+
+
+                float wave = (float)Math.Sin(ticks * 0.0001f);
+                byte colorMod = (byte)(215 + (wave * 40));
+                SDL.SDL_SetTextureColorMod(worldTexture, colorMod, colorMod, 255);
+
+
+                camX = player.X - (SCREEN_WIDTH / 2);
+                camY = player.Y - (SCREEN_HEIGHT / 2);
+
+                camX = Math.Clamp(camX, 0, (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
+                camY = Math.Clamp(camY, 0, (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
+
+                SDL.SDL_RenderClear(renderer);
+
+                SDL.SDL_Rect srcRect = new SDL.SDL_Rect
+                {
+                    x = (int)camX,
+                    y = (int)camY,
+                    w = SCREEN_WIDTH,
+                    h = SCREEN_HEIGHT
                 };
-                SDL.SDL_RenderFillRect(renderer, ref alertRect);
+                SDL.SDL_Rect destRect = new SDL.SDL_Rect
+                {
+                    x = 0,
+                    y = 0,
+                    w = SCREEN_WIDTH,
+                    h = SCREEN_HEIGHT
+                };
+                SDL.SDL_RenderCopy(renderer, worldTexture, ref srcRect, ref destRect);
+                
+                int startX = (int)(camX / TILE_SIZE);
+                int startY = (int)(camY / TILE_SIZE);
+                int endX = startX + (SCREEN_WIDTH / TILE_SIZE) + 1;
+                int endY = startY + (SCREEN_HEIGHT / TILE_SIZE) + 1;
+
+                for (int x = startX; x < endX; x++)
+                {
+                    for (int y = startY; y < endY; y++)
+                    {
+                        if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT)
+                        {
+                            if (fishMap[x, y] > 0.7f && map[x, y] < 0.75f)
+                            {
+                                SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 150);
+                                SDL.SDL_Rect bubble = new SDL.SDL_Rect {
+                                    x = (int)(x * TILE_SIZE - camX + 4),
+                                    y = (int)(y * TILE_SIZE - camY + 4),
+                                    w = 2, h = 2
+                                };
+                                SDL.SDL_RenderFillRect(renderer, ref bubble);
+                            }
+                        }
+                    }
+                }
+
+                SDL.SDL_SetRenderTarget(renderer, fogTexture);
+                SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_NONE);
+                SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+                SDL.SDL_Rect revealRect = new SDL.SDL_Rect
+                {
+                    x = (int)(player.X - 200),
+                    y = (int)(player.Y - 200),
+                    w = 400,
+                    h = 400
+                };
+                SDL.SDL_RenderFillRect(renderer, ref revealRect);
+                SDL.SDL_SetRenderTarget(renderer, IntPtr.Zero);
+                SDL.SDL_RenderCopy(renderer, fogTexture, ref srcRect, ref destRect);
+
+                SDL.SDL_Rect playerRect = new SDL.SDL_Rect
+                {
+                    x = (int)(player.X - camX),
+                    y = (int)(player.Y - camY),
+                    w = 16,
+                    h = 16
+                };
+
+                SDL.SDL_RenderCopyEx(
+                    renderer, 
+                    boatTexture, 
+                    IntPtr.Zero, 
+                    ref playerRect, 
+                    player.Angle, 
+                    IntPtr.Zero, 
+                    SDL.SDL_RendererFlip.SDL_FLIP_NONE
+                );
+
+                SDL.SDL_SetRenderDrawColor(renderer, 101, 67, 33, 255);
+                SDL.SDL_Rect pierRect = new SDL.SDL_Rect
+                {
+                    x = (int)(pierX - camX - 10),
+                    y = (int)(pierY - camY - 5),
+                    w = 30,
+                    h = 30
+                };
+                SDL.SDL_RenderFillRect(renderer, ref pierRect);
+
+                float distToPier = (float)Math.Sqrt(Math.Pow(player.X - pierX, 2) + Math.Pow(player.Y - pierY, 2));
+                if (distToPier < 50f) {
+                    SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                    SDL.SDL_Rect hint = new SDL.SDL_Rect { x = (int)(pierX - camX - 5), y = (int)(pierY - camY - 40), w = 10, h = 10 };
+                    SDL.SDL_RenderFillRect(renderer, ref hint); // Белый квадратик как символ "F"
+                }
+
+                if (player.FishIsBiting && !fishingGame.IsActive)
+                {
+                    SDL.SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                    SDL.SDL_Rect alertRect = new SDL.SDL_Rect {
+                        x = (int)(player.X - camX + 4),
+                        y = (int)(player.Y - camY - 25), 
+                        w = 6, h = 12
+                    };
+                    SDL.SDL_RenderFillRect(renderer, ref alertRect);
+                }
+
+                if (fishingGame.IsActive)
+                {
+                    SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+                    SDL.SDL_Rect bgMiniGame = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 110, y = SCREEN_HEIGHT - 140, w = 220, h = 60 };
+                    SDL.SDL_RenderFillRect(renderer, ref bgMiniGame);
+
+                    SDL.SDL_Rect tensionBarBg = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 100, y = SCREEN_HEIGHT - 100, w = 200, h = 15 };
+                    SDL.SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+                    SDL.SDL_RenderFillRect(renderer, ref tensionBarBg);
+
+                    int pointerPos = (int)(fishingGame.Tension * 10); 
+                    SDL.SDL_Rect pointer = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 + pointerPos - 5, y = SCREEN_HEIGHT - 105, w = 10, h = 25 };
+                    SDL.SDL_SetRenderDrawColor(renderer, 255, 50, 50, 255);
+                    SDL.SDL_RenderFillRect(renderer, ref pointer);
+
+                    float progPercent = Math.Clamp(fishingGame.Progress / fishingGame.MaxProgress, 0f, 1f);
+                    SDL.SDL_Rect progBar = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 100, y = SCREEN_HEIGHT - 125, w = (int)(200 * progPercent), h = 10 };
+                    SDL.SDL_SetRenderDrawColor(renderer, 50, 255, 50, 255);
+                    SDL.SDL_RenderFillRect(renderer, ref progBar);
+                }            
+
+                SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                SDL.SDL_Rect goldIcon = new SDL.SDL_Rect { x = 10, y = 20, w = 10, h = 10 };
+                SDL.SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);
+                SDL.SDL_RenderFillRect(renderer, ref goldIcon);
+
+                SDL.SDL_Color white = new SDL.SDL_Color { r = 255, g = 255, b = 255, a = 255 };
+
+                DrawText(renderer, font, $"GOLD: {player.Money}", 25, 20, white);
+                DrawText(renderer, font, $"LVL: {player.Level}", 25, 40, white);
+                DrawText(renderer, font, $"CARGO: {player.Inventory.Count}/{player.MaxInventorySlots}", 25, 60, white);
+
             }
 
-            if (fishingGame.IsActive)
-            {
-                SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-                SDL.SDL_Rect bgMiniGame = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 110, y = SCREEN_HEIGHT - 140, w = 220, h = 60 };
-                SDL.SDL_RenderFillRect(renderer, ref bgMiniGame);
 
-                SDL.SDL_Rect tensionBarBg = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 100, y = SCREEN_HEIGHT - 100, w = 200, h = 15 };
-                SDL.SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-                SDL.SDL_RenderFillRect(renderer, ref tensionBarBg);
-
-                int pointerPos = (int)(fishingGame.Tension * 10); 
-                SDL.SDL_Rect pointer = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 + pointerPos - 5, y = SCREEN_HEIGHT - 105, w = 10, h = 25 };
-                SDL.SDL_SetRenderDrawColor(renderer, 255, 50, 50, 255);
-                SDL.SDL_RenderFillRect(renderer, ref pointer);
-
-                float progPercent = Math.Clamp(fishingGame.Progress / fishingGame.MaxProgress, 0f, 1f);
-                SDL.SDL_Rect progBar = new SDL.SDL_Rect { x = SCREEN_WIDTH / 2 - 100, y = SCREEN_HEIGHT - 125, w = (int)(200 * progPercent), h = 10 };
-                SDL.SDL_SetRenderDrawColor(renderer, 50, 255, 50, 255);
-                SDL.SDL_RenderFillRect(renderer, ref progBar);
-            }            
-
-            SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
-            SDL.SDL_Rect uiRect = new SDL.SDL_Rect { x = 10, y = 10, w = 180, h = 80 };
-            SDL.SDL_RenderFillRect(renderer, ref uiRect);
-
-            SDL.SDL_SetRenderDrawColor(renderer, 200, 200, 0, 255);
-            float cargoFill = (float)player.Inventory.Count / player.MaxInventorySlots;
-            SDL.SDL_Rect cargoBar = new SDL.SDL_Rect { x = 20, y = 50, w = (int)(150 * cargoFill), h = 10 };
-            SDL.SDL_RenderFillRect(renderer, ref cargoBar);
 
             SDL.SDL_RenderPresent(renderer);
             SDL.SDL_Delay(16);
@@ -279,7 +402,16 @@ internal class Program
         SDL.SDL_DestroyWindow(window);
         SDL.SDL_Quit();
     }
+    
+    static void RenderMenu(IntPtr renderer, IntPtr font)
+    {
+        SDL.SDL_Color titleColor = new SDL.SDL_Color { r = 0, g = 200, b = 255, a = 255 };
+        SDL.SDL_Color white = new SDL.SDL_Color { r = 255, g = 255, b = 255, a = 255 };
 
+        DrawText(renderer, font, "GAZE INTO ABYSS", SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 2 - 50, titleColor);
+        
+        DrawText(renderer, font, "PRESS [ENTER] TO START ADVENTURE", SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 20, white);
+    }
     static IntPtr BakeTileTextures(IntPtr renderer, float[,] map, int mapWidth, int mapHeight, int tileSize)
     {
         IntPtr texture = SDL.SDL_CreateTexture(
@@ -416,6 +548,24 @@ internal class Program
                 fishMap[x,y] = (noise.GetNoise(x, y) + 1.0f) / 2f;
     }
 
+    static void DrawText(IntPtr renderer, IntPtr font, string text, int x, int y, SDL.SDL_Color color)
+    {
+        if (font == IntPtr.Zero) return;
+
+        IntPtr textSurface = SDL_ttf.TTF_RenderUTF8_Blended(font, text, color);
+        if (textSurface == IntPtr.Zero) return;
+
+        IntPtr textTexture = SDL.SDL_CreateTextureFromSurface(renderer, textSurface);
+        
+        SDL.SDL_QueryTexture(textTexture, out _, out _, out int w, out int h);
+        SDL.SDL_Rect dstRect = new SDL.SDL_Rect { x = x, y = y, w = w, h = h };
+
+        SDL.SDL_RenderCopy(renderer, textTexture, IntPtr.Zero, ref dstRect);
+
+        SDL.SDL_FreeSurface(textSurface);
+        SDL.SDL_DestroyTexture(textTexture);
+    }
+
     static IntPtr GenerateBoat(IntPtr renderer)
     {
          IntPtr boatTexture = SDL.SDL_CreateTexture(
@@ -536,7 +686,7 @@ class Player
         Random rand = new Random();
         bool found = false;
         int attempts = 0;
-        int maxAttempts = 1000;
+        int maxAttempts = 2000;
         int SearchRadius = 30 / tileSize;
 
         while (!found && attempts < maxAttempts)
@@ -552,12 +702,16 @@ class Player
                 {
                     for (int dy = -SearchRadius; dy <= SearchRadius; dy++)
                     {
-                        float neighborValue = map[x + dx, y + dy];
-
-                        if (neighborValue >= 0.75f && neighborValue < 0.77f)
+                        int checkX = x + dx;
+                        int checkY = y + dy;
+                        if (checkX >= 0 && checkX < mapWidth && checkY >= 0 && checkY < mapHeight)
                         {
-                            nearLand = true;
-                            break;
+                            float neighborValue = map[checkX, checkY];
+                            if (neighborValue >= 0.75f && neighborValue < 0.77f)
+                            {
+                                nearLand = true;
+                                break;
+                            }
                         }
                     }
                     if (nearLand) break;
@@ -588,7 +742,7 @@ class Player
         if (Inventory.Count < MaxInventorySlots)
         {
             Inventory.Add(fish);
-            Experience += (int)(fish.Weight * 10);
+            Experience += (int)(fish.Weight * 10 * (int)fish.Rarity);
             CheckLevelUp();
             return true;
         }

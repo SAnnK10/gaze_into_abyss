@@ -12,6 +12,9 @@
     <ItemGroup>
       <SDL2Lib Include="/opt/homebrew/lib/libSDL2.dylib" Condition="Exists('/opt/homebrew/lib/libSDL2.dylib')" />
       <SDL2Lib Include="/usr/local/lib/libSDL2.dylib" Condition="Exists('/usr/local/lib/libSDL2.dylib')" />
+      <None Update="font.ttf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
     <Copy 
