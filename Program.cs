@@ -31,6 +31,8 @@ internal class Program
 class Game 
 {   
     enum GameState {Menu, Playing, GameMenu, GameOver, Victory}
+    static bool inShop = false;
+    static bool isVictoryScreen = false;
     static bool pierInitialized = false;
     static bool[,] discovered = new bool[MAP_WIDTH, MAP_HEIGHT];
     static GameState currentState = GameState.Menu;
@@ -38,14 +40,13 @@ class Game
     static uint fishUpdateInterval = 120000;
     const int SCREEN_WIDTH = 800;
     const int SCREEN_HEIGHT = 600;
+    static int shopSelection = 0;    
     const int TILE_SIZE = 10;
     const int MAP_WIDTH = SCREEN_WIDTH * 5 / TILE_SIZE;
     const int MAP_HEIGHT = SCREEN_HEIGHT * 5 / TILE_SIZE;
     static float camX, camY = 0f;
     static float pierX, pierY;
-    static bool inShop = false;
     static List<ShopItem> shopItems = new();
-    static int shopSelection = 0;    
     
     public static void Start()
     {    
@@ -142,7 +143,7 @@ class Game
         IntPtr fogTexture = GeneratePermanentFog(renderer, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE);
         IntPtr dynamicFogTexture = GenerateDynamicFog(renderer, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE);
 
-        Player player = new Player(map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, 0.8f);
+        Player player = new Player(map, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, 0.1f);
 
         IntPtr boatTexture = GenerateBoat(renderer, player);
 
@@ -362,7 +363,19 @@ class Game
                                 if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_LSHIFT)
                                 {
                                     player.Dash();
-                                }                 
+                                }
+                                if (isVictoryScreen)
+                                {
+                                    if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_RETURN)
+                                    {
+                                        isVictoryScreen = false;
+                                        pirateKing.currentHealth = -1;
+                                    }
+                                    else if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_ESCAPE)
+                                    {
+                                        running = false;
+                                    }
+                                }          
                             } 
                         }
                     }
@@ -780,6 +793,27 @@ class Game
                 {
                     Shop.DrawShop(renderer, font, shopItems, shopSelection, camX, camY);                   
                 }
+                if (!isVictoryScreen && pirateKing.currentHealth <= 0)
+                {
+                    isVictoryScreen = true;
+                }
+                if (isVictoryScreen)
+                {
+                    // Затемняем фон для читаемости
+                    SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
+                    SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
+                    SDL.SDL_Rect overlay = new SDL.SDL_Rect { x = 0, y = 0, w = SCREEN_WIDTH, h = SCREEN_HEIGHT };
+                    SDL.SDL_RenderFillRect(renderer, ref overlay);
+
+                    SDL.SDL_Color gold = new SDL.SDL_Color { r = 255, g = 215, b = 0, a = 255 };
+                    SDL.SDL_Color whit = new SDL.SDL_Color { r = 255, g = 255, b = 255, a = 255 };
+
+                    DrawText(renderer, font, "PIRATE KING DEFEATED!", SCREEN_WIDTH / 2 - 180, SCREEN_HEIGHT / 2 - 40, gold);
+                    DrawText(renderer, font, "YOU WIN", SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, gold);
+                    
+                    DrawText(renderer, font, "[ENTER] - CONTINUE ADVENTURE", SCREEN_WIDTH / 2 - 190, SCREEN_HEIGHT / 2 + 60, whit);
+                    DrawText(renderer, font, "[ESC] - EXIT", SCREEN_WIDTH / 2 - 190, SCREEN_HEIGHT / 2 + 100, whit);
+                }
             }
 
             SDL.SDL_RenderPresent(renderer);
@@ -1117,7 +1151,7 @@ class Player : Boat
     public bool FishIsBiting { get; set; } = false;
     public bool CannonnsIsAvaible { get; set; } = false;
     public uint BiteTimestamp { get; set; } = 0;
-    public int Money { get; set; } = 100000;
+    public int Money { get; set; } = 0;
     public int MaxInventorySlots { get; set; } = 10; 
     public int Level { get; set; } = 1;
     public float Experience { get; set; } = 0;
