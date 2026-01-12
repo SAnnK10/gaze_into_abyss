@@ -1,0 +1,24 @@
+{
+  "fishes": [
+    { "Name": "Уклейка", "MinLevel": 1, "Rarity": 0, "BaseWeight": 0.2 },
+    { "Name": "Золотистый Карась", "MinLevel": 1, "Rarity": 0, "BaseWeight": 0.5 },
+    { "Name": "Окунь", "MinLevel": 1, "Rarity": 0, "BaseWeight": 0.8 },
+    { "Name": "Морская Плотва", "MinLevel": 2, "Rarity": 0, "BaseWeight": 0.4 },
+    { "Name": "Песчаный Бычок", "MinLevel": 2, "Rarity": 0, "BaseWeight": 0.3 },
+    { "Name": "Радужная Форель", "MinLevel": 3, "Rarity": 1, "BaseWeight": 1.5 },
+    { "Name": "Синий Тунец", "MinLevel": 4, "Rarity": 1, "BaseWeight": 4.0 },
+    { "Name": "Королевская Скумбрия", "MinLevel": 5, "Rarity": 1, "BaseWeight": 3.2 },
+    { "Name": "Рыба-Попугай", "MinLevel": 5, "Rarity": 1, "BaseWeight": 2.5 },
+    { "Name": "Серебристый Хек", "MinLevel": 6, "Rarity": 1, "BaseWeight": 5.0 },
+    { "Name": "Электрический Угорь", "MinLevel": 8, "Rarity": 2, "BaseWeight": 8.0 },
+    { "Name": "Рыба-Молот", "MinLevel": 10, "Rarity": 2, "BaseWeight": 25.0 },
+    { "Name": "Мурена", "MinLevel": 12, "Rarity": 2, "BaseWeight": 12.0 },
+    { "Name": "Тигровая Акула", "MinLevel": 15, "Rarity": 2, "BaseWeight": 45.0 },
+    { "Name": "Призрачный Скат", "MinLevel": 18, "Rarity": 2, "BaseWeight": 20.0 },
+    { "Name": "Глубинный Ужас", "MinLevel": 20, "Rarity": 3, "BaseWeight": 60.0 },
+    { "Name": "Древний Левиафан", "MinLevel": 25, "Rarity": 3, "BaseWeight": 150.0 },
+    { "Name": "Кракенёнок", "MinLevel": 30, "Rarity": 3, "BaseWeight": 85.0 },
+    { "Name": "Золотая Рыбка Желаний", "MinLevel": 1, "Rarity": 3, "BaseWeight": 0.1 },
+    { "Name": "Абиссальный Дракон", "MinLevel": 40, "Rarity": 3, "BaseWeight": 200.0 }
+  ]
+}

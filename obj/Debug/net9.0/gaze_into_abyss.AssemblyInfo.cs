@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("gaze_into_abyss")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0fc96f381da1a4fcfe6517a8fd8fb290419bdc7f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6acb24668c84fd85ba69cf9a71a221841260301d")]
 [assembly: System.Reflection.AssemblyProductAttribute("gaze_into_abyss")]
 [assembly: System.Reflection.AssemblyTitleAttribute("gaze_into_abyss")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
