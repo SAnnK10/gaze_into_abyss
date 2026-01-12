@@ -162,7 +162,7 @@ class Game
         List<(float x, float y)> spawnPoints = new();
         int attempts = 0;
         const int max_attempts = 500;
-        const int max_pirates = 10;
+        const int max_pirates = 30;
 
         Random rand = new Random();
 
@@ -369,7 +369,7 @@ class Game
                                     if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_RETURN)
                                     {
                                         isVictoryScreen = false;
-                                        pirateKing.currentHealth = -1;
+                                        pirateKing.currentHealth = 1;
                                     }
                                     else if (e.key.keysym.scancode == SDL.SDL_Scancode.SDL_SCANCODE_ESCAPE)
                                     {
@@ -442,12 +442,6 @@ class Game
                         {
                             pirate.TakeDamage(ball.GetCurrentDmg());
                             popups.Add(new DamagePopup(pirate.x, pirate.y, ball.GetCurrentDmg()));
-                            if (pirate is PirateKing king && king.IsDead && !PirateKing.IsDefeated)
-                            {
-                                PirateKing.IsDefeated = true;
-                                currentState = GameState.Menu;
-                                Console.WriteLine("You win the Pirate King");
-                            }
                             cannonballs.RemoveAt(i);
                             break;
                         }
@@ -793,13 +787,12 @@ class Game
                 {
                     Shop.DrawShop(renderer, font, shopItems, shopSelection, camX, camY);                   
                 }
-                if (!isVictoryScreen && pirateKing.currentHealth <= 0)
+                if (!isVictoryScreen && pirateKing.IsDead)
                 {
                     isVictoryScreen = true;
                 }
                 if (isVictoryScreen)
                 {
-                    // Затемняем фон для читаемости
                     SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
                     SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
                     SDL.SDL_Rect overlay = new SDL.SDL_Rect { x = 0, y = 0, w = SCREEN_WIDTH, h = SCREEN_HEIGHT };
@@ -1146,7 +1139,7 @@ abstract class Boat
 }
 
 class Player : Boat
-{   
+{
     public bool IsFishing { get; set; } = false;
     public bool FishIsBiting { get; set; } = false;
     public bool CannonnsIsAvaible { get; set; } = false;
